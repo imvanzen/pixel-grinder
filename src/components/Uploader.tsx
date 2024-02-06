@@ -1,11 +1,16 @@
-import React, { useState } from "react";
-import RGBQuant from "rgbquant";
+import React, { useRef, useState } from "react";
+import pixelit from "pixelit";
 
-const ImageUploader: React.FC = () => {
+const Uploader: React.FC = () => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
   const [image, setImage] = useState<string | null>(null);
-  const [colors, setColors] = useState<string[]>([]);
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -17,21 +22,23 @@ const ImageUploader: React.FC = () => {
         img.src = reader.result as string;
         img.onload = () => {
           // Initialize RGBQuant
-          const quant = new RGBQuant({ colors: 256 });
+          const config = {
+            to: canvasRef.current,
+            //defaults to document.getElementById("pixelitcanvas")
+            from: imgRef.current,
+            //defaults to document.getElementById("pixelitimg")
+            scale: 8,
+            //from 0-50, defaults to 8
+            // palette : [[r,g,b]],
+            //defaults to a fixed pallete
+            maxHeight: img.height,
+            //defaults to null
+            maxWidth: img.width,
+            //defaults to null
+          };
+          const px = new pixelit(config);
 
-          // Sample colors
-          quant.sample(img);
-
-          // Get palette
-          const palette = quant.palette(true);
-
-          // Convert RGB values to hex codes
-          const hexCodes = palette.map(
-            ([r, g, b]: [number, number, number]) =>
-              `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
-          );
-
-          setColors(hexCodes);
+          px.draw();
         };
       };
       reader.readAsDataURL(file);
@@ -40,16 +47,16 @@ const ImageUploader: React.FC = () => {
 
   return (
     <div>
-      <input type="file" accept="image/*" onChange={handleImageUpload} />
-      {image && <img src={image} alt="User uploaded" />}
-      {colors.map((color, index) => (
-        <div
-          key={index}
-          style={{ backgroundColor: color, width: "20px", height: "20px" }}
-        />
-      ))}
+      <input
+        type="file"
+        accept="image/*"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+      />
+      {image && <img src={image} ref={imgRef} alt="Selected image" />}
+      <canvas id="pixelitcanvas" ref={canvasRef} />
     </div>
   );
 };
 
-export default ImageUploader;
+export default Uploader;
